@@ -1,0 +1,29 @@
+{
+  "name": "polargrid-ai-dashboard",
+  "version": "2.1.0",
+  "description": "PolarGrid AI - Energy Management System for Polar Research Stations",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src",
+    "format": "prettier --write src"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^4.4.0",
+    "eslint": "^8.49.0",
+    "eslint-plugin-react": "^7.33.0",
+    "prettier": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

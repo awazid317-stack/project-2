@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: polargrid-postgres
+    environment:
+      POSTGRES_DB: polargrid
+      POSTGRES_USER: polargrid_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./polargrid_schema.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polargrid_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - polargrid-network
+
+  # TimescaleDB Extension (runs on postgres)
+  # TimescaleDB is installed as extension on postgres container
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: polargrid-backend
+    environment:
+      DATABASE_URL: postgresql://polargrid_user:${DB_PASSWORD:-secure_password_123}@postgres:5432/polargrid
+      FLASK_ENV: production
+      FLASK_DEBUG: 0
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - polargrid-network
+
+  # React Frontend
+  frontend:
+    image: node:18-alpine
+    container_name: polargrid-frontend
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    ports:
+      - "3000:3000"
+    command: npm run dev
+    environment:
+      VITE_API_URL: http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - polargrid-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: polargrid-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/dist:/usr/share/nginx/html
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - polargrid-network
+
+  # Redis (optional, for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: polargrid-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - polargrid-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  polargrid-network:
+    driver: bridge
